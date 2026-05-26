@@ -21,6 +21,10 @@ const useEditorStore = create((set, get) => ({
   selectedMusicId: null,
   musicVolume: 0.3,
 
+  // Preview
+  previewUrl: null,
+  previewLoading: false,
+
   // Export
   exportId: null,
   exportStatus: null,   // 'pending' | 'exporting' | 'done' | 'error'
@@ -68,6 +72,9 @@ const useEditorStore = create((set, get) => ({
   selectMusic: (id) => set({ selectedMusicId: id }),
   setMusicVolume: (v) => set({ musicVolume: v }),
 
+  setPreviewUrl: (url) => set({ previewUrl: url }),
+  setPreviewLoading: (loading) => set({ previewLoading: loading }),
+
   setExport: (exportId) => set({ exportId, exportStatus: 'pending', exportProgress: 0, downloadUrl: null }),
   setExportProgress: (status, progress) => set({ exportStatus: status, exportProgress: progress }),
   setDownloadUrl: (url) => set({ downloadUrl: url }),
@@ -76,6 +83,7 @@ const useEditorStore = create((set, get) => ({
     jobId: null, videoUrl: null, duration: 0,
     analysisStage: null, analysisProgress: 0,
     cuts: [], subtitles: [], transcript: [], currentTime: 0,
+    previewUrl: null, previewLoading: false,
     selectedMusicId: null, musicVolume: 0.3,
     exportId: null, exportStatus: null, exportProgress: 0, downloadUrl: null,
   }),

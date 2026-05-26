@@ -40,16 +40,15 @@ async def analysis_stream(job_id: str):
         yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 0})}\n\n"
         job.status = JobStatus.analyzing
 
-        analyze_task = asyncio.create_task(asyncio.gather(
-            asyncio.to_thread(detect_silence, job.video_path),
-            asyncio.to_thread(analyze_transcript, transcript),
-        ))
-        while not analyze_task.done():
+        silence_task = asyncio.create_task(asyncio.to_thread(detect_silence, job.video_path))
+        ai_task = asyncio.create_task(asyncio.to_thread(analyze_transcript, transcript))
+        while not silence_task.done() or not ai_task.done():
             await asyncio.sleep(3)
-            if not analyze_task.done():
+            if not silence_task.done() or not ai_task.done():
                 yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 0, 'heartbeat': True})}\n\n"
 
-        silence_cuts, ai_cuts = await analyze_task
+        silence_cuts = silence_task.result()
+        ai_cuts = ai_task.result()
 
         yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 100})}\n\n"
 

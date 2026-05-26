@@ -37,6 +37,11 @@ export default function Timeline({ videoRef }) {
   const currentTime = useEditorStore((s) => s.currentTime)
   const adjustCut = useEditorStore((s) => s.adjustCut)
   const addUserCut = useEditorStore((s) => s.addUserCut)
+  const jobId = useEditorStore((s) => s.jobId)
+  const previewUrl = useEditorStore((s) => s.previewUrl)
+  const previewLoading = useEditorStore((s) => s.previewLoading)
+  const setPreviewUrl = useEditorStore((s) => s.setPreviewUrl)
+  const setPreviewLoading = useEditorStore((s) => s.setPreviewLoading)
   const containerRef = useRef(null)
 
   const toX = useCallback((t) => duration > 0 ? (t / duration) * 100 : 0, [duration])
@@ -74,6 +79,31 @@ export default function Timeline({ videoRef }) {
   }
 
   const enabledCuts = cuts.filter((c) => c.enabled)
+
+  async function applyPreview() {
+    setPreviewLoading(true)
+    setPreviewUrl(null)
+    try {
+      const res = await fetch(`/api/preview/${jobId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cuts: cuts.filter((c) => c.enabled),
+          music_id: null,
+          music_volume: 0,
+          include_subtitles: false,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setPreviewUrl(url)
+    } catch (e) {
+      console.error('Preview failed:', e)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
 
   return (
     <div>
@@ -149,6 +179,32 @@ export default function Timeline({ videoRef }) {
           共 {cuts.length} 个剪辑点 · {enabledCuts.length} 个已启用
         </div>
         {cuts.map((cut) => <CutSegmentRow key={cut.id} cut={cut} />)}
+      </div>
+
+      {/* Preview section */}
+      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #2a2a2a' }}>
+        <button
+          onClick={applyPreview}
+          disabled={previewLoading}
+          style={{
+            padding: '10px 24px',
+            background: previewLoading ? '#444' : '#e05',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: previewLoading ? 'not-allowed' : 'pointer',
+            marginBottom: 12,
+          }}
+        >
+          {previewLoading ? '生成试看中...' : '应用剪辑 → 试看'}
+        </button>
+        {previewUrl && (
+          <div style={{ background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+            <video src={previewUrl} controls style={{ width: '100%', maxHeight: 300, display: 'block' }} />
+          </div>
+        )}
       </div>
     </div>
   )

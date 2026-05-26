@@ -17,8 +17,9 @@ dist/
 .cache/
 
 # Temp / output
+tmp/
 backend/tmp/
-backend/music/
+backend/music/tracks/
 
 # OS
 .DS_Store

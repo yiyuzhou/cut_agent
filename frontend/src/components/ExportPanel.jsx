@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useEditorStore from '../store/editorStore'
 
 const styles = {
@@ -46,6 +46,7 @@ export default function ExportPanel() {
   const setExport = useEditorStore((s) => s.setExport)
   const setExportProgress = useEditorStore((s) => s.setExportProgress)
   const esRef = useRef(null)
+  const [exportError, setExportError] = useState(null)
 
   async function startExport() {
     const res = await fetch(`/api/export/${jobId}`, {
@@ -68,6 +69,7 @@ export default function ExportPanel() {
     es.onmessage = (e) => {
       const d = JSON.parse(e.data)
       setExportProgress(d.status, d.progress ?? 0)
+      if (d.error) setExportError(d.error)
       if (d.status === 'done' || d.status === 'error') es.close()
     }
     es.onerror = () => { setExportProgress('error', 0); es.close() }
@@ -98,7 +100,7 @@ export default function ExportPanel() {
             </a>
           )}
           {exportStatus === 'error' && (
-            <div style={{ ...styles.status, color: '#f55' }}>导出失败，请重试</div>
+            <div style={{ ...styles.status, color: '#f55' }}>导出失败{exportError ? `：${exportError}` : '，请重试'}</div>
           )}
         </div>
       )}

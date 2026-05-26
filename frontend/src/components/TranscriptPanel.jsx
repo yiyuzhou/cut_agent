@@ -12,7 +12,7 @@ const styles = {
     transition: 'background 0.15s',
   },
   segActive: { background: '#1e1e1e', borderRadius: 4 },
-  time: { color: '#e05', flexShrink: 0, minWidth: 90, fontVariantNumeric: 'tabular-nums' },
+  time: { color: '#e05', flexShrink: 0, minWidth: 120, fontVariantNumeric: 'tabular-nums' },
   text: { color: '#ccc', lineHeight: 1.5 },
 }
 
@@ -36,7 +36,7 @@ export default function TranscriptPanel({ videoRef }) {
             style={{ ...styles.seg, ...(active ? styles.segActive : {}) }}
             onClick={() => seekTo(seg.start)}
           >
-            <div style={styles.time}>{formatTime(seg.start)}</div>
+            <div style={styles.time}>{formatTime(seg.start)} → {formatTime(seg.end)}</div>
             <div style={styles.text}>{seg.text}</div>
           </div>
         )

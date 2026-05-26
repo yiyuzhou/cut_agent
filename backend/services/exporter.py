@@ -77,9 +77,14 @@ def export_video(
     inputs = ["-i", video_path]
 
     if srt_path:
-        # Embed subtitle burn into the video filter chain
-        escaped = srt_path.replace("\\", "/").replace(":", "\\\\:")
-        video_chain = f"[0:v]{vf},subtitles='{escaped}'[vout]"
+        # Embed subtitle burn with improved styling
+        escaped = srt_path.replace("\\", "/").replace(":", "\\:")
+        video_chain = (
+            f"[0:v]{vf},"
+            f"subtitles='{escaped}':force_style='FontSize=20,PrimaryColour=&H00FFFFFF,"
+            f"OutlineColour=&H00000000,Outline=2,Shadow=1,MarginV=40'"
+            f"[vout]"
+        )
     else:
         video_chain = f"[0:v]{vf}[vout]"
 

@@ -15,7 +15,7 @@ _TOOL = {
     "type": "function",
     "function": {
         "name": "report_cuts",
-        "description": "Report segments of the transcript that should be cut from the final video.",
+        "description": "Report segments of the transcript that should be cut from the final video, with detailed reasoning.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -32,8 +32,9 @@ _TOOL = {
                             },
                             "confidence": {"type": "number", "description": "0.0 to 1.0"},
                             "transcript_text": {"type": "string", "description": "The text of the segment"},
+                            "reasoning": {"type": "string", "description": "Why this segment should be cut, in Chinese. Explain the specific issue found."},
                         },
-                        "required": ["start", "end", "type", "confidence", "transcript_text"],
+                        "required": ["start", "end", "type", "confidence", "transcript_text", "reasoning"],
                     },
                 }
             },
@@ -50,6 +51,8 @@ Cut these types of segments:
 - repetition: Repeated phrases or sentences where the speaker restates the same idea
 - pause: Long awkward pauses or dead air (indicated by gaps in timestamps)
 - off_topic: Tangents clearly unrelated to the main vlog content
+
+For EACH cut you report, you MUST include a "reasoning" field explaining in Chinese WHY this specific segment should be cut. Be specific — reference the actual content, timing gap, or filler words found. Example: "此处有4.6秒的冗长停顿，位于'是我林晨'和'我想查一下'之间，属于无效等待，建议剪掉以保持节奏紧凑。"
 
 Keep natural speech rhythm. Only cut segments that genuinely hurt the viewing experience.
 Be conservative — when in doubt, keep the segment."""
@@ -85,15 +88,24 @@ def analyze_transcript(transcript: list[TranscriptSegment]) -> list[CutSegment]:
                     cut_type = CutType(c["type"])
                 except ValueError:
                     cut_type = CutType.filler
+                start_t = float(c["start"])
+                end_t = float(c["end"])
+                reasoning = c.get("reasoning") or ""
+                if not reasoning:
+                    duration = end_t - start_t
+                    type_names = {"filler": "口误/语气词", "repetition": "内容重复", "pause": "冗长停顿", "off_topic": "跑题内容"}
+                    type_cn = type_names.get(c.get("type", ""), "内容问题")
+                    reasoning = f"AI检测到{type_cn}（时长{duration:.1f}秒），建议剪辑以提升视频节奏。"
                 cuts.append(
                     CutSegment(
                         id=str(uuid.uuid4()),
-                        start=float(c["start"]),
-                        end=float(c["end"]),
+                        start=start_t,
+                        end=end_t,
                         type=cut_type,
                         source=CutSource.ai,
                         confidence=float(c.get("confidence", 0.8)),
                         transcript_text=c.get("transcript_text", ""),
+                        reasoning=reasoning,
                         enabled=True,
                     )
                 )

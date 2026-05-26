@@ -61,7 +61,9 @@ export default function CutSegmentRow({ cut }) {
     <div style={{ ...styles.wrap, ...(cut.enabled ? {} : styles.wrapDisabled) }}>
       <div style={{ ...styles.badge, background: color }}>{TYPE_LABELS[cut.type] || cut.type}</div>
       <div style={styles.time}>{formatTime(cut.start)} → {formatTime(cut.end)}</div>
-      <div style={styles.text}>{cut.transcript_text || '—'}</div>
+      <div style={styles.text}>
+        {cut.reasoning || cut.transcript_text || '—'}
+      </div>
       <button
         style={{ ...styles.toggle, background: cut.enabled ? '#e05' : '#333' }}
         onClick={() => toggleCut(cut.id)}

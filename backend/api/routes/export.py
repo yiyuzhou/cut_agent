@@ -28,7 +28,7 @@ async def start_export(job_id: str, req: ExportRequest):
     music_path = None
     if req.music_id:
         catalog_path = os.path.join(MUSIC_DIR, "catalog.json")
-        with open(catalog_path) as f:
+        with open(catalog_path, encoding="utf-8") as f:
             catalog = json.load(f)
         track = next((t for t in catalog if t["id"] == req.music_id), None)
         if track:
@@ -61,6 +61,8 @@ async def _run_export(export_id: str, job, req: ExportRequest, music_path):
         export_store[export_id]["status"] = "done"
         export_store[export_id]["progress"] = 100
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         export_store[export_id]["status"] = "error"
         export_store[export_id]["error"] = str(e)
 
@@ -71,7 +73,10 @@ async def export_progress_stream(export_id: str):
         if not state:
             yield f"data: {json.dumps({'error': 'not found'})}\n\n"
             return
-        yield f"data: {json.dumps({'status': state['status'], 'progress': state['progress']})}\n\n"
+        msg = {'status': state['status'], 'progress': state['progress']}
+        if state.get('error'):
+            msg['error'] = state['error']
+        yield f"data: {json.dumps(msg)}\n\n"
         if state["status"] in ("done", "error"):
             return
         await asyncio.sleep(0.5)
@@ -100,12 +105,35 @@ async def download_export(export_id: str):
     )
 
 
+@router.post("/preview/{job_id}")
+async def preview_video(job_id: str, req: ExportRequest):
+    """Apply cuts and return a preview video for inline playback."""
+    job = job_store.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    output_path = await asyncio.to_thread(
+        export_video,
+        job.video_path,
+        req.cuts,
+        [],  # no subtitles in preview
+        None,  # no music in preview
+        0.0,
+        lambda pct: None,
+    )
+    return FileResponse(
+        output_path,
+        media_type="video/mp4",
+        headers={"Content-Disposition": "inline"},
+    )
+
+
 @router.get("/music")
 async def list_music():
     catalog_path = os.path.join(MUSIC_DIR, "catalog.json")
     if not os.path.exists(catalog_path):
         return {"tracks": []}
-    with open(catalog_path) as f:
+    with open(catalog_path, encoding="utf-8") as f:
         catalog = json.load(f)
     return {"tracks": catalog}
 
@@ -113,10 +141,17 @@ async def list_music():
 @router.get("/music/{track_id}/preview")
 async def preview_music(track_id: str):
     catalog_path = os.path.join(MUSIC_DIR, "catalog.json")
-    with open(catalog_path) as f:
+    with open(catalog_path, encoding="utf-8") as f:
         catalog = json.load(f)
     track = next((t for t in catalog if t["id"] == track_id), None)
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
+    # Serve short preview clip if available, otherwise full track
+    preview_file = track["file"].replace(".mp3", "_preview.mp3")
+    preview_path = os.path.join(MUSIC_DIR, preview_file)
+    if os.path.exists(preview_path):
+        return FileResponse(preview_path, media_type="audio/mpeg")
     file_path = os.path.join(MUSIC_DIR, track["file"])
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Music file not found")
     return FileResponse(file_path, media_type="audio/mpeg")

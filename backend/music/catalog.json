@@ -1,0 +1,56 @@
+[
+  {
+    "id": "track_001",
+    "title": "Sunny Morning",
+    "artist": "Cut Agent 音效库",
+    "duration": 180,
+    "bpm": 110,
+    "mood": "轻快活力",
+    "file": "tracks/sunny_morning.mp3"
+  },
+  {
+    "id": "track_002",
+    "title": "Chill Vibes",
+    "artist": "Cut Agent 音效库",
+    "duration": 210,
+    "bpm": 80,
+    "mood": "轻松放松",
+    "file": "tracks/chill_vibes.mp3"
+  },
+  {
+    "id": "track_003",
+    "title": "Adventure Awaits",
+    "artist": "Cut Agent 音效库",
+    "duration": 195,
+    "bpm": 130,
+    "mood": "动感冒险",
+    "file": "tracks/adventure_awaits.mp3"
+  },
+  {
+    "id": "track_004",
+    "title": "Gentle Piano",
+    "artist": "Cut Agent 音效库",
+    "duration": 170,
+    "bpm": 90,
+    "mood": "温柔治愈",
+    "file": "tracks/gentle_piano.mp3"
+  },
+  {
+    "id": "track_005",
+    "title": "Urban Beat",
+    "artist": "Cut Agent 音效库",
+    "duration": 200,
+    "bpm": 100,
+    "mood": "都市节奏",
+    "file": "tracks/urban_beat.mp3"
+  },
+  {
+    "id": "track_006",
+    "title": "Ambient Dream",
+    "artist": "Cut Agent 音效库",
+    "duration": 220,
+    "bpm": 60,
+    "mood": "梦幻氛围",
+    "file": "tracks/ambient_dream.mp3"
+  }
+]

@@ -1,7 +1,14 @@
 import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+# Ensure ffmpeg/ffprobe are in PATH (winget installs to this directory on Windows)
+_ffmpeg_dir = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Links")
+if os.path.isdir(_ffmpeg_dir) and _ffmpeg_dir not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+    print(f"[startup] Added {_ffmpeg_dir} to PATH", file=sys.stderr)
 
 from api.routes import upload, analyze, export
 

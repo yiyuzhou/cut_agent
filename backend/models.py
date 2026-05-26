@@ -25,6 +25,7 @@ class CutSegment(BaseModel):
     source: CutSource
     confidence: float = 1.0
     transcript_text: Optional[str] = None
+    reasoning: Optional[str] = None
     enabled: bool = True
 
 
