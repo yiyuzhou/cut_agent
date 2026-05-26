@@ -66,7 +66,6 @@ def analyze_transcript(transcript: list[TranscriptSegment]) -> list[CutSegment]:
         model="deepseek-v4-pro",
         max_tokens=4096,
         tools=[_TOOL],
-        tool_choice={"type": "function", "function": {"name": "report_cuts"}},
         messages=[
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": f"Here is the transcript to analyze:\n\n{transcript_text}"},
