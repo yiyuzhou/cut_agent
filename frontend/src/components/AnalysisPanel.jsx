@@ -2,23 +2,50 @@ import { useEffect, useRef } from 'react'
 import useEditorStore from '../store/editorStore'
 
 const styles = {
-  panel: { padding: '24px 0' },
-  title: { fontSize: 16, fontWeight: 600, marginBottom: 16 },
+  panel: { padding: '24px 0 0' },
+  title: { fontSize: 15, fontWeight: 600, marginBottom: 16, color: '#d0d4e0', display: 'flex', alignItems: 'center', gap: 8 },
+  titleDot: { width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #69f0ae, #00e5ff)', flexShrink: 0 },
   row: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 },
-  label: { width: 80, color: '#aaa', fontSize: 13 },
-  bar: { flex: 1, height: 6, background: '#2a2a2a', borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%', background: '#e05', borderRadius: 3, transition: 'width 0.3s' },
-  pct: { width: 36, textAlign: 'right', fontSize: 13, color: '#aaa' },
-  status: { marginTop: 8, fontSize: 13, color: '#888' },
+  label: { width: 80, color: '#a0a8b8', fontSize: 13, fontWeight: 500 },
+  bar: {
+    flex: 1,
+    height: 6,
+    background: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 3,
+    transition: 'width 400ms cubic-bezier(0.4,0,0.2,1)',
+    background: 'linear-gradient(90deg, #00e5ff, #69f0ae, #b388ff)',
+    backgroundSize: '200% 100%',
+    animation: 'progressAurora 3s linear infinite',
+  },
+  pct: { width: 36, textAlign: 'right', fontSize: 13, color: '#a0a8b8', fontVariantNumeric: 'tabular-nums' },
+  status: { marginTop: 12, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 },
   btn: {
-    padding: '10px 28px',
-    background: '#e05',
+    padding: '12px 32px',
+    background: 'linear-gradient(135deg, #00e5ff 0%, #b388ff 100%)',
     color: '#fff',
     border: 'none',
-    borderRadius: 8,
+    borderRadius: 12,
     fontSize: 15,
     fontWeight: 600,
     marginTop: 8,
+    cursor: 'pointer',
+    transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+    boxShadow: '0 4px 16px rgba(0, 229, 255, 0.2)',
+  },
+  checkIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #69f0ae, #00e5ff)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 }
 
@@ -42,24 +69,15 @@ export default function AnalysisPanel() {
   function startAnalysis() {
     if (esRef.current) esRef.current.close()
     setAnalysisStage('transcribing', 0)
-
     const es = new EventSource(`/api/analyze/${jobId}`)
     esRef.current = es
-
     es.onmessage = async (e) => {
       const data = JSON.parse(e.data)
-      if (data.error) {
-        setAnalysisStage('error', 0)
-        es.close()
-        return
-      }
-      if (data.heartbeat) return  // 忽略心跳包
-      if (data.stage) {
-        setAnalysisStage(data.stage, data.progress ?? 0)
-      }
+      if (data.error) { setAnalysisStage('error', 0); es.close(); return }
+      if (data.heartbeat) return
+      if (data.stage) setAnalysisStage(data.stage, data.progress ?? 0)
       if (data.stage === 'done') {
         es.close()
-        // Fetch cuts
         const res = await fetch(`/api/cuts/${jobId}`)
         const payload = await res.json()
         setCuts(payload.cuts)
@@ -68,11 +86,7 @@ export default function AnalysisPanel() {
         setDuration(payload.duration)
       }
     }
-
-    es.onerror = () => {
-      setAnalysisStage('error', 0)
-      es.close()
-    }
+    es.onerror = () => { setAnalysisStage('error', 0); es.close() }
   }
 
   useEffect(() => () => esRef.current?.close(), [])
@@ -80,7 +94,14 @@ export default function AnalysisPanel() {
   if (!stage) {
     return (
       <div style={styles.panel}>
-        <button style={styles.btn} onClick={startAnalysis}>开始分析</button>
+        <button
+          style={styles.btn}
+          onClick={startAnalysis}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0, 229, 255, 0.3)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 229, 255, 0.2)' }}
+        >
+          开始分析
+        </button>
       </div>
     )
   }
@@ -89,7 +110,10 @@ export default function AnalysisPanel() {
 
   return (
     <div style={styles.panel}>
-      <div style={styles.title}>分析进度</div>
+      <div style={styles.title}>
+        <div style={styles.titleDot} />
+        分析进度
+      </div>
       {stages.map((s) => {
         const isActive = stage === s
         const isDone = stages.indexOf(s) < stages.indexOf(stage) || stage === 'done'
@@ -105,10 +129,22 @@ export default function AnalysisPanel() {
         )
       })}
       {stage === 'done' && (
-        <div style={{ ...styles.status, color: '#4c4' }}>分析完成，请在下方编辑剪辑点</div>
+        <div style={{ ...styles.status, color: '#69f0ae' }}>
+          <div style={styles.checkIcon}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          分析完成，请在下方编辑剪辑点
+        </div>
       )}
       {stage === 'error' && (
-        <div style={{ ...styles.status, color: '#f55' }}>分析失败，请重试</div>
+        <div style={{ ...styles.status, color: '#ff80ab' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+          分析失败，请重试
+        </div>
       )}
     </div>
   )
