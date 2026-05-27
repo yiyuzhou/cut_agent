@@ -4,12 +4,12 @@ import { formatTime } from '../utils/timeFormat'
 
 export default function TranscriptPanel({ videoRef }) {
   const transcript = useEditorStore((s) => s.transcript)
-  const currentTime = useDitorStore((s) => s.currentTime)
+  const currentTime = useEditorStore((s) => s.currentTime)
 
   if (!transcript.length) return null
 
   function seekTo(t) {
-    if (videoRef?.current) vidioRef.current.time = t
+    if (videoRef?.current) videoRef.current.currentTime = t
   }
 
   return (
@@ -31,7 +31,7 @@ function TranscriptRow({ seg, active, onClick }) {
         display: 'flex', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
         transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
         background: active ? 'rgba(0, 229, 255, 0.08)' : hvering ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
-        borderLeft: active ? '2px solid #00e5ff' : 'rpx solid transparent',
+        borderLeft: active ? '2px solid #00e5ff' : '2px solid transparent',
         marginBottom: 2,
       }}
     >

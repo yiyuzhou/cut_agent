@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -9,6 +10,8 @@ from services.transcriber import transcribe_video
 from services.silence_detector import detect_silence
 from services.analyzer import analyze_transcript
 from services.cut_merger import merge_cuts
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,35 +23,50 @@ async def analysis_stream(job_id: str):
         return
 
     try:
-        yield f"data: {json.dumps({'stage': 'transcribing', 'progress': 0})}\n\n"
+        yield f"data: {json.dumps({'stage': 'transcribing', 'progress': 0, 'status': '正在加载 Whisper 模型...'})}\n\n"
         job.status = JobStatus.transcribing
 
-        # 转录期间每 3 秒发一次心跳，防止浏览器断开连接
         transcribe_task = asyncio.create_task(
             asyncio.to_thread(transcribe_video, job.video_path)
         )
+        elapsed = 0
         while not transcribe_task.done():
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
+            elapsed += 2
             if not transcribe_task.done():
-                yield f"data: {json.dumps({'stage': 'transcribing', 'progress': 0, 'heartbeat': True})}\n\n"
+                pct = min(int(elapsed / max(job.duration * 0.1, 30) * 100), 90)
+                yield f"data: {json.dumps({'stage': 'transcribing', 'progress': pct, 'status': '语音转录中...'})}\n\n"
 
         transcript, subtitles = await transcribe_task
         job.transcript = transcript
         job.subtitles = subtitles
 
-        yield f"data: {json.dumps({'stage': 'transcribing', 'progress': 100})}\n\n"
-        yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 0})}\n\n"
+        yield f"data: {json.dumps({'stage': 'transcribing', 'progress': 100, 'status': '转录完成'})}\n\n"
+        yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 0, 'status': '正在分析...'})}\n\n"
         job.status = JobStatus.analyzing
 
         silence_task = asyncio.create_task(asyncio.to_thread(detect_silence, job.video_path))
         ai_task = asyncio.create_task(asyncio.to_thread(analyze_transcript, transcript))
+        elapsed = 0
         while not silence_task.done() or not ai_task.done():
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
+            elapsed += 2
             if not silence_task.done() or not ai_task.done():
-                yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 0, 'heartbeat': True})}\n\n"
+                pct = min(int(elapsed / 60 * 100), 90)
+                status = '静音检测 + AI 分析中...' if elapsed < 10 else 'AI 正在深度分析转录文本...'
+                yield f"data: {json.dumps({'stage': 'analyzing', 'progress': pct, 'status': status})}\n\n"
 
-        silence_cuts = silence_task.result()
-        ai_cuts = ai_task.result()
+        try:
+            silence_cuts = silence_task.result()
+        except Exception as e:
+            logger.exception("Silence detection failed")
+            raise RuntimeError(f"静音检测失败: {e}") from e
+
+        try:
+            ai_cuts = ai_task.result()
+        except Exception as e:
+            logger.exception("AI analysis failed")
+            raise RuntimeError(f"AI 分析失败: {e}") from e
 
         yield f"data: {json.dumps({'stage': 'analyzing', 'progress': 100})}\n\n"
 
@@ -59,6 +77,7 @@ async def analysis_stream(job_id: str):
         yield f"data: {json.dumps({'stage': 'done', 'cuts_count': len(merged)})}\n\n"
 
     except Exception as e:
+        logger.exception("Analysis stream error for job %s", job_id)
         job.status = JobStatus.error
         job.error = str(e)
         yield f"data: {json.dumps({'error': str(e)})}\n\n"

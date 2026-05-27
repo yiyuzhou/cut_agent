@@ -25,6 +25,7 @@ def merge_cuts(silence_cuts: list[CutSegment], ai_cuts: list[CutSegment]) -> lis
                 source=CutSource.silence_detection if prev.source == CutSource.silence_detection and cut.source == CutSource.silence_detection else CutSource.ai,
                 confidence=max(prev.confidence, cut.confidence),
                 transcript_text=prev.transcript_text or cut.transcript_text,
+                reasoning=prev.reasoning or cut.reasoning,
                 enabled=True,
             )
         else:
@@ -36,6 +37,7 @@ def merge_cuts(silence_cuts: list[CutSegment], ai_cuts: list[CutSegment]) -> lis
                 source=cut.source,
                 confidence=cut.confidence,
                 transcript_text=cut.transcript_text,
+                reasoning=cut.reasoning,
                 enabled=cut.enabled,
             ))
 

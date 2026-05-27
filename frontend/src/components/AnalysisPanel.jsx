@@ -59,6 +59,8 @@ export default function AnalysisPanel() {
   const jobId = useEditorStore((s) => s.jobId)
   const stage = useEditorStore((s) => s.analysisStage)
   const progress = useEditorStore((s) => s.analysisProgress)
+  const analysisStatus = useEditorStore((s) => s.analysisStatus)
+  const analysisError = useEditorStore((s) => s.analysisError)
   const setAnalysisStage = useEditorStore((s) => s.setAnalysisStage)
   const setCuts = useEditorStore((s) => s.setCuts)
   const setSubtitles = useEditorStore((s) => s.setSubtitles)
@@ -68,14 +70,17 @@ export default function AnalysisPanel() {
 
   function startAnalysis() {
     if (esRef.current) esRef.current.close()
-    setAnalysisStage('transcribing', 0)
+    setAnalysisStage('transcribing', 0, null, '准备中...')
     const es = new EventSource(`/api/analyze/${jobId}`)
     esRef.current = es
     es.onmessage = async (e) => {
       const data = JSON.parse(e.data)
-      if (data.error) { setAnalysisStage('error', 0); es.close(); return }
-      if (data.heartbeat) return
-      if (data.stage) setAnalysisStage(data.stage, data.progress ?? 0)
+      if (data.error) { setAnalysisStage('error', 0, data.error); es.close(); return }
+      if (data.stage) {
+        setAnalysisStage(data.stage, data.progress ?? 0, null, data.status || '')
+      } else if (data.progress !== undefined) {
+        setAnalysisStage(undefined, data.progress, null, data.status || '')
+      }
       if (data.stage === 'done') {
         es.close()
         const res = await fetch(`/api/cuts/${jobId}`)
@@ -86,7 +91,7 @@ export default function AnalysisPanel() {
         setDuration(payload.duration)
       }
     }
-    es.onerror = () => { setAnalysisStage('error', 0); es.close() }
+    es.onerror = () => { setAnalysisStage('error', 0, 'SSE 连接断开，请检查后端是否正常运行'); es.close() }
   }
 
   useEffect(() => () => esRef.current?.close(), [])
@@ -128,6 +133,12 @@ export default function AnalysisPanel() {
           </div>
         )
       })}
+      {stage !== 'done' && stage !== 'error' && analysisStatus && (
+        <div style={{ marginTop: 4, fontSize: 12, color: '#a0a8b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#00e5ff', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          {analysisStatus}
+        </div>
+      )}
       {stage === 'done' && (
         <div style={{ ...styles.status, color: '#69f0ae' }}>
           <div style={styles.checkIcon}>
@@ -138,7 +149,37 @@ export default function AnalysisPanel() {
           分析完成，请在下方编辑剪辑点
         </div>
       )}
-      {stage === 'error' && (
+      {stage === 'error' && analysisError?.includes('DEEPSEEK_API_KEY') && (
+        <div style={{ ...styles.status, color: '#ffd54f', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            需要配置 AI 分析服务
+          </div>
+          <div style={{ fontSize: 12, color: '#a0a8b8', paddingLeft: 24, lineHeight: 1.6 }}>
+            请在后端启动前设置环境变量：<br />
+            <code style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>
+              set DEEPSEEK_API_KEY=你的密钥
+            </code><br />
+            前往 <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" style={{ color: '#00e5ff' }}>platform.deepseek.com</a> 获取 API Key
+          </div>
+        </div>
+      )}
+      {stage === 'error' && analysisError && !analysisError.includes('DEEPSEEK_API_KEY') && (
+        <div style={{ ...styles.status, color: '#ff80ab', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            分析失败
+          </div>
+          <div style={{ fontSize: 12, color: '#ff80ab', opacity: 0.8, paddingLeft: 24, wordBreak: 'break-all' }}>
+            {analysisError}
+          </div>
+        </div>
+      )}
+      {stage === 'error' && !analysisError && (
         <div style={{ ...styles.status, color: '#ff80ab' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />

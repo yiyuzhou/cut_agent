@@ -1,13 +1,23 @@
 import json
+import logging
 import os
 import uuid
 
+from dotenv import load_dotenv
 from openai import OpenAI
 
 from models import CutSegment, CutSource, CutType, TranscriptSegment
 
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+
+_deepseek_api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+if not _deepseek_api_key:
+    logger.warning("DEEPSEEK_API_KEY is not set — AI analysis will fail")
+
 client = OpenAI(
-    api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
+    api_key=_deepseek_api_key,
     base_url="https://api.deepseek.com",
 )
 
@@ -62,18 +72,26 @@ def analyze_transcript(transcript: list[TranscriptSegment]) -> list[CutSegment]:
     if not transcript:
         return []
 
+    if not _deepseek_api_key:
+        raise RuntimeError("DEEPSEEK_API_KEY 环境变量未设置，请在 .env 文件中配置后重启后端")
+
     lines = [f"[{seg.start:.2f}s - {seg.end:.2f}s] {seg.text}" for seg in transcript]
     transcript_text = "\n".join(lines)
 
-    response = client.chat.completions.create(
-        model="deepseek-v4-pro",
-        max_tokens=4096,
-        tools=[_TOOL],
-        messages=[
-            {"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": f"Here is the transcript to analyze:\n\n{transcript_text}"},
-        ],
-    )
+    logger.info("Calling DeepSeek API with model deepseek-v4-pro, transcript length: %d chars", len(transcript_text))
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-v4-pro",
+            max_tokens=4096,
+            tools=[_TOOL],
+            messages=[
+                {"role": "system", "content": _SYSTEM},
+                {"role": "user", "content": f"Here is the transcript to analyze:\n\n{transcript_text}"},
+            ],
+        )
+    except Exception as e:
+        logger.exception("DeepSeek API call failed")
+        raise RuntimeError(f"DeepSeek API 调用失败: {e}") from e
 
     message = response.choices[0].message
     if not message.tool_calls:

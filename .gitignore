@@ -16,6 +16,10 @@ node_modules/
 dist/
 .cache/
 
+# Env / secrets
+.env
+*.env
+
 # Temp / output
 tmp/
 backend/tmp/

@@ -9,6 +9,8 @@ const useEditorStore = create((set, get) => ({
   // Analysis state
   analysisStage: null,   // 'transcribing' | 'analyzing' | 'done' | 'error'
   analysisProgress: 0,
+  analysisStatus: '',
+  analysisError: null,
 
   // Editor state
   cuts: [],
@@ -34,7 +36,12 @@ const useEditorStore = create((set, get) => ({
   // Actions
   setJob: (jobId, videoUrl, duration) => set({ jobId, videoUrl, duration }),
 
-  setAnalysisStage: (stage, progress) => set({ analysisStage: stage, analysisProgress: progress }),
+  setAnalysisStage: (stage, progress, error, status) => set((state) => ({
+    analysisStage: stage !== undefined ? stage : state.analysisStage,
+    analysisProgress: progress !== undefined ? progress : state.analysisProgress,
+    analysisError: error || null,
+    analysisStatus: status !== undefined ? status : state.analysisStatus,
+  })),
 
   setCuts: (cuts) => set({ cuts }),
   setSubtitles: (subtitles) => set({ subtitles }),
@@ -81,7 +88,7 @@ const useEditorStore = create((set, get) => ({
 
   reset: () => set({
     jobId: null, videoUrl: null, duration: 0,
-    analysisStage: null, analysisProgress: 0,
+    analysisStage: null, analysisProgress: 0, analysisStatus: '', analysisError: null,
     cuts: [], subtitles: [], transcript: [], currentTime: 0,
     previewUrl: null, previewLoading: false,
     selectedMusicId: null, musicVolume: 0.3,
